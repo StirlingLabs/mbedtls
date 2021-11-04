@@ -96,24 +96,3 @@ jobs:
         path: |
           macos/
           include/
-  create-release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    needs: [build-linux,build-macos,build-win]
-    steps:
-      - name: Download all mbedtls artifacts
-        uses: actions/download-artifact@v2
-      - name: Repackage as release artifacts
-        run: |
-          mkdir artifacts/
-          tar czf artifacts/mbedtls-linux.tar.gz -C mbedtls-linux/linux $(find mbedtls-linux/linux -type f -name "libmbed*" -exec basename {} \;)
-          tar czf artifacts/mbedtls-macos.tar.gz -C mbedtls-macos/macos $(find mbedtls-macos/macos -type f -name "libmbed*" -exec basename {} \;)
-          tar czf artifacts/mbedtls-win.tar.gz -C mbedtls-win64/win64 $(find mbedtls-win64/win64 -type f -name "*.*" -exec basename {} \;)
-          mv mbedtls-linux/include include
-          tar czf artifacts/mbedtls-headers.tar.gz include/
-      - name: Create release on GitHub
-        uses: softprops/action-gh-release@v0.1.12
-        with:
-          name: mbedtls
-          files: |
-            artifacts/*.*
