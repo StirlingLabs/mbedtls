@@ -9,28 +9,22 @@ jobs:
   build-win:
     name: Build for Windows
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: c:\msys64\msys2_shell.cmd -defterm -no-start -here -mingw64 {0}
     steps:
     - uses: actions/checkout@v2
       with:
         ref: ${{ github.event.inputs.ref }}
-    - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.3
-    - name: Create Build Directory
-      run: |
-        mkdir build
-    - name: Configure cmake
-      run: |
-        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON -DUSE_SHARED_MBEDTLS_LIBRARY=ON ..
-      working-directory: build
     - name: Build
       run: |
-        cmake --build . --config Release
-        cmake --build . -t mbedcrypto  --config Release
-        cmake --build . -t mbedx509  --config Release
-        cmake --build . -t mbedtls  --config Release
-      working-directory: build
+        mkdir build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON -DUSE_SHARED_MBEDTLS_LIBRARY=ON ..
+        cmake --build . -t mbedcrypto --config Release
+        cmake --build . -t mbedx509 --config Release
+        cmake --build . -t mbedtls --config Release
     - name: Prepare Artifacts
-      shell: bash
       run: |
         mkdir win64
         cp build/library/Release/*.* win64/
@@ -45,8 +39,13 @@ jobs:
   build-linux:
     name: Build for Linux
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     steps:
     - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.inputs.ref }}
     - name: Generated Files
       run: |
         make generated_files
@@ -55,9 +54,10 @@ jobs:
         mkdir build
         cd build
         cmake -DCMAKE_BUILD_TYPE=Release -DUSE_SHARED_MBEDTLS_LIBRARY=ON ..
-        cmake --build . --config Release
+        cmake --build . -t mbedcrypto --config Release
+        cmake --build . -t mbedx509 --config Release
+        cmake --build . -t mbedtls --config Release
     - name: Prepare Artifacts
-      shell: bash
       run: |
         mkdir linux
         cp build/library/libmbed* linux/
@@ -72,8 +72,13 @@ jobs:
   build-macos:
     name: Build for Macos
     runs-on: macos-latest
+    defaults:
+      run:
+        shell: bash
     steps:
     - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.inputs.ref }}
     - name: Generated Files
       run: |
         make generated_files
@@ -82,9 +87,10 @@ jobs:
         mkdir build
         cd build
         cmake -DCMAKE_BUILD_TYPE=Release -DUSE_SHARED_MBEDTLS_LIBRARY=ON ..
-        cmake --build . --config Release
+        cmake --build . -t mbedcrypto --config Release
+        cmake --build . -t mbedx509 --config Release
+        cmake --build . -t mbedtls --config Release
     - name: Prepare Artifacts
-      shell: bash
       run: |
         mkdir macos
         cp build/library/libmbed* macos/
