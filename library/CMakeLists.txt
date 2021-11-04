@@ -1,3 +1,8 @@
+if(CMAKE_VERSION VERSION_GREATER 3.9)
+    cmake_policy(SET CMP0069 NEW)
+endif()
+
+
 option(USE_STATIC_MBEDTLS_LIBRARY "Build mbed TLS static library." ON)
 option(USE_SHARED_MBEDTLS_LIBRARY "Build mbed TLS shared library." OFF)
 option(LINK_WITH_PTHREAD "Explicitly link mbed TLS library to pthread." OFF)
@@ -108,6 +113,10 @@ set(src_tls
 
 if(CMAKE_COMPILER_IS_GNUCC)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wmissing-declarations -Wmissing-prototypes")
+    if (MSYS OR MINGW)
+        set(CMAKE_CFLAGS "${CMAKE_C_FLAGS} -static -static-libgcc -static-libstdc++")
+        add_compile_definitions(MBEDTLS_NO_UDBL_DIVISION)
+    endif()
 endif(CMAKE_COMPILER_IS_GNUCC)
 
 if(CMAKE_COMPILER_IS_CLANG)

@@ -166,18 +166,22 @@ if(CMAKE_COMPILER_IS_GNU)
     if (GCC_VERSION VERSION_GREATER 7.0 OR GCC_VERSION VERSION_EQUAL 7.0)
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wformat-overflow=2 -Wformat-truncation")
     endif()
-    set(CMAKE_C_FLAGS_RELEASE     "-O2")
+    set(CMAKE_C_FLAGS_RELEASE     "-O3")
     set(CMAKE_C_FLAGS_DEBUG       "-O0 -g3")
     set(CMAKE_C_FLAGS_COVERAGE    "-O0 -g3 --coverage")
     set(CMAKE_C_FLAGS_ASAN        "-fsanitize=address -fno-common -fsanitize=undefined -fno-sanitize-recover=all -O3")
     set(CMAKE_C_FLAGS_ASANDBG     "-fsanitize=address -fno-common -fsanitize=undefined -fno-sanitize-recover=all -O1 -g3 -fno-omit-frame-pointer -fno-optimize-sibling-calls")
     set(CMAKE_C_FLAGS_CHECK       "-Os")
     set(CMAKE_C_FLAGS_CHECKFULL   "${CMAKE_C_FLAGS_CHECK} -Wcast-qual")
+    if (MSYS OR MINGW)
+        set(CMAKE_CFLAGS "${CMAKE_C_FLAGS} -static -static-libgcc -static-libstdc++")
+        add_compile_definitions(MBEDTLS_NO_UDBL_DIVISION)
+    endif()
 endif(CMAKE_COMPILER_IS_GNU)
 
 if(CMAKE_COMPILER_IS_CLANG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wwrite-strings -Wpointer-arith -Wimplicit-fallthrough -Wshadow -Wvla -Wformat=2 -Wno-format-nonliteral")
-    set(CMAKE_C_FLAGS_RELEASE     "-O2")
+    set(CMAKE_C_FLAGS_RELEASE     "-O3")
     set(CMAKE_C_FLAGS_DEBUG       "-O0 -g3")
     set(CMAKE_C_FLAGS_COVERAGE    "-O0 -g3 --coverage")
     set(CMAKE_C_FLAGS_ASAN        "-fsanitize=address -fno-common -fsanitize=undefined -fno-sanitize-recover=all -O3")
@@ -227,6 +231,41 @@ add_subdirectory(include)
 add_subdirectory(3rdparty)
 
 add_subdirectory(library)
+
+function(get_all_targets var)
+    set(targets)
+    get_all_targets_recursive(targets ${CMAKE_CURRENT_SOURCE_DIR})
+    set(${var} ${targets} PARENT_SCOPE)
+endfunction()
+
+macro(get_all_targets_recursive targets dir)
+    get_property(subdirectories DIRECTORY ${dir} PROPERTY SUBDIRECTORIES)
+    foreach(subdir ${subdirectories})
+        get_all_targets_recursive(${targets} ${subdir})
+    endforeach()
+
+    get_property(current_targets DIRECTORY ${dir} PROPERTY BUILDSYSTEM_TARGETS)
+    list(APPEND ${targets} ${current_targets})
+endmacro()
+
+if(CMAKE_VERSION VERSION_GREATER 3.9)
+    cmake_policy(SET CMP0069 NEW)
+
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        include(CheckIPOSupported)
+        check_ipo_supported(RESULT supported OUTPUT error)
+
+        if( supported )
+            message(STATUS "IPO / LTO enabled")
+            get_all_targets(all_targets)
+            foreach(a_target IN ITEMS ${all_targets})
+                set_property(TARGET ${a_target} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+            endforeach()
+        else()
+            message(STATUS "IPO / LTO not supported: <${error}>")
+        endif()
+    endif()
+endif()
 
 #
 # The C files in tests/src directory contain test code shared among test suites
@@ -331,6 +370,7 @@ install(
     FILE "MbedTLSTargets.cmake")
 
 if(CMAKE_VERSION VERSION_GREATER 3.14)
+
     # Do not export the package by default
     cmake_policy(SET CMP0090 NEW)
 

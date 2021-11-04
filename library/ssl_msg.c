@@ -3205,7 +3205,7 @@ static int ssl_check_dtls_clihlo_cookie(
 static int ssl_handle_possible_reconnect( mbedtls_ssl_context *ssl )
 {
     int ret = MBEDTLS_ERR_ERROR_CORRUPTION_DETECTED;
-    size_t len;
+    size_t len = 0;
 
     if( ssl->conf->f_cookie_write == NULL ||
         ssl->conf->f_cookie_check == NULL )

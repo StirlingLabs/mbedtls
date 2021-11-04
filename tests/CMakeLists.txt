@@ -1,3 +1,7 @@
+if(CMAKE_VERSION VERSION_GREATER 3.9)
+    cmake_policy(SET CMP0069 NEW)
+endif()
+
 set(libs
     ${mbedtls_target}
 )
