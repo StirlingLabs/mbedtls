@@ -1,8 +1,8 @@
-name: Create Release
+name: Integration
 on:
+  pull_request:
   push:
-    tags:
-      - v*
+    branches: [ development, master ]
 jobs:
   build-win:
     name: Build for Windows
