@@ -1,0 +1,119 @@
+name: Custom Build
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag or committish for checkout."
+        required: true
+jobs:
+  build-win:
+    name: Build for Windows
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.inputs.ref }}
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.3
+    - name: Create Build Directory
+      run: |
+        mkdir build
+    - name: Configure cmake
+      run: |
+        cmake -DCMAKE_BUILD_TYPE=Release -DUSE_SHARED_MBEDTLS_LIBRARY=ON ..
+      working-directory: build
+    - name: Build
+      run: |
+        cmake --build . --config Release
+        cmake --build . -t mbedcrypto  --config Release
+        cmake --build . -t mbedx509  --config Release
+        cmake --build . -t mbedtls  --config Release
+      working-directory: build
+    - name: Prepare Artifacts
+      shell: bash
+      run: |
+        mkdir win64
+        cp build/library/Release/*.* win64/
+        ls win64
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: mbedtls-win64
+        path: |
+          win64/*.*
+          include/
+  build-linux:
+    name: Build for Linux
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Generated Files
+      run: |
+        make generated_files
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Release -DUSE_SHARED_MBEDTLS_LIBRARY=On ..
+        cmake --build . --config Release
+    - name: Prepare Artifacts
+      shell: bash
+      run: |
+        mkdir linux
+        cp build/library/libmbed* linux/
+        ls -lrt linux
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: mbedtls-linux
+        path: |
+          linux/
+          include/
+  build-macos:
+    name: Build for Macos
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Generated Files
+      run: |
+        make generated_files
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Release -DUSE_SHARED_MBEDTLS_LIBRARY=On ..
+        cmake --build . --config Release
+    - name: Prepare Artifacts
+      shell: bash
+      run: |
+        mkdir macos
+        cp build/library/libmbed* macos/
+        ls -lrt  macos/
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: mbedtls-macos
+        path: |
+          macos/
+          include/
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build-linux,build-macos,build-win]
+    steps:
+      - name: Download all mbedtls artifacts
+        uses: actions/download-artifact@v2
+      - name: Repackage as release artifacts
+        run: |
+          mkdir artifacts/
+          tar czf artifacts/mbedtls-linux.tar.gz -C mbedtls-linux/linux $(find mbedtls-linux/linux -type f -name "libmbed*" -exec basename {} \;)
+          tar czf artifacts/mbedtls-macos.tar.gz -C mbedtls-macos/macos $(find mbedtls-macos/macos -type f -name "libmbed*" -exec basename {} \;)
+          tar czf artifacts/mbedtls-win.tar.gz -C mbedtls-win64/win64 $(find mbedtls-win64/win64 -type f -name "*.*" -exec basename {} \;)
+          mv mbedtls-linux/include include
+          tar czf artifacts/mbedtls-headers.tar.gz include/
+      - name: Create release on GitHub
+        uses: softprops/action-gh-release@v0.1.12
+        with:
+          name: mbedtls
+          files: |
+            artifacts/*.*
